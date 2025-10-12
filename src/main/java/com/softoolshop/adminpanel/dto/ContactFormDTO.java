@@ -11,4 +11,5 @@ public class ContactFormDTO {
     private String message;
     private Date crtDate;
     private short replyFlg; 
+    private String replyMessage;
 }

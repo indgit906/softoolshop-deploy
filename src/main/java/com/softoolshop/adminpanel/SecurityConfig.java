@@ -43,6 +43,7 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.GET, "/api/orders").authenticated()
 				.requestMatchers(HttpMethod.POST, "/api/orders/complete").authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/contact").authenticated()
+				.requestMatchers(HttpMethod.PUT, "/api/contact/*").authenticated()
 				.anyRequest().permitAll())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
