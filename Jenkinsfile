@@ -1,14 +1,15 @@
 pipeline {
     agent any
+
     environment {
-        DOCKER_HUB_USER = credentials('dockerhub-username')
-        DOCKER_HUB_PASS = credentials('dockerhub-password')
-        IMAGE_NAME = "${DOCKER_HUB_USER}/softoolshop"
+        IMAGE_NAME = "softoolshop"
     }
 
     stages {
         stage('Checkout SCM') {
-            steps { checkout scm }
+            steps {
+                checkout scm
+            }
         }
 
         stage('Build JAR') {
@@ -22,19 +23,26 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps { sh "docker build -t ${IMAGE_NAME}:latest ." }
-        }
-
-        stage('Push Docker Image') {
+        stage('Build & Push Docker Image') {
             steps {
-                sh "echo ${DOCKER_HUB_PASS} | docker login -u ${DOCKER_HUB_USER} --password-stdin"
-                sh "docker push ${IMAGE_NAME}:latest"
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-password',
+                                                     usernameVariable: 'DOCKER_HUB_USER',
+                                                     passwordVariable: 'DOCKER_HUB_PASS')]) {
+                        sh '''
+                            echo "${DOCKER_HUB_PASS}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
+                            docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest .
+                            docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
+                        '''
+                    }
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
-            steps { sh "kubectl apply -f deployment.yaml" }
+            steps {
+                sh 'kubectl apply -f deployment.yaml'
+            }
         }
     }
 }
