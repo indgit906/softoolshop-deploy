@@ -47,9 +47,12 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public List<ProductDTO> getAllProducts() {
 		List<ProductDTO> entities = prodRepo.getActiveProducts(0);
-		String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().scheme("https").replacePath(null).build()
-				.toUriString();
-
+		// Base URL dynamically detects http/https correctly
+	    String baseUrl = ServletUriComponentsBuilder
+	            .fromCurrentContextPath()
+	            .build()
+	            .toUriString();
+	    System.out.println(baseUrl);
 		for (ProductDTO dto : entities) {
 			// Strip ₹ and parse prices
 			double oldPrice = parsePrice(dto.getOldPriceStr());
@@ -61,8 +64,8 @@ public class ProductServiceImpl implements ProductService {
 			} else {
 				dto.setDiscount("-0%");
 			}
-			dto.setImageUrl(baseUrl + "/softools/api/images/product/" + dto.getImageUrl());
-			dto.setProductLink(baseUrl + "/softools/api/products/itm/" + dto.getProductId());
+			dto.setImageUrl(baseUrl + "/api/images/product/" + dto.getImageUrl());
+			dto.setProductLink(baseUrl + "/api/products/itm/" + dto.getProductId());
 		}
 
 		return entities;
@@ -138,15 +141,26 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	public ProductDTO getProductById(Integer productId) {
-		String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().scheme("https").replacePath(null).build()
-				.toUriString();
+		String baseUrl = ServletUriComponentsBuilder
+	            .fromCurrentContextPath()
+	            .build()
+	            .toUriString();
 		Optional<Product> opt = prodRepo.findById(productId);
 		ProductDTO prodDto = null;
 		if (opt.isPresent()) {
 			prodDto = modelMapper.map(opt.get(), ProductDTO.class);
 		}
-		prodDto.setProductLink(baseUrl + "/softools/api/products/itm/" + prodDto.getProductId());
-		prodDto.setImageUrl(baseUrl + "/softools/api/images/product/" + prodDto.getImageUrl());
+		double oldPrice = parsePrice(prodDto.getOldPriceStr());
+		double newPrice = parsePrice(prodDto.getPriceStr());
+		// Calculate discount percentage
+		if (oldPrice > 0) {
+			double discountPercent = ((oldPrice - newPrice) / oldPrice) * 100;
+			prodDto.setDiscount(String.format("-%.0f%%", discountPercent));
+		} else {
+			prodDto.setDiscount("-0%");
+		}
+		prodDto.setProductLink(baseUrl + "/api/products/itm/" + prodDto.getProductId());
+		prodDto.setImageUrl(baseUrl + "/api/images/product/" + prodDto.getImageUrl());
 		// prodDto.setDescription(prodDescRepo.getProductDescById(prodDto.getProductId()));
 		return prodDto;
 	}
@@ -186,9 +200,10 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public List<ProductDTO> getFilteredProducts(ProductFilterDTO filterRequest) {
 		List<Product> entities = prodRepo.getFilteredProducts(filterRequest);
-
-		String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().scheme("https").replacePath(null).build()
-				.toUriString();
+		String baseUrl = ServletUriComponentsBuilder
+	            .fromCurrentContextPath()
+	            .build()
+	            .toUriString();
 
 		return entities.stream().map(entity -> {
 			ProductDTO dto = modelMapper.map(entity, ProductDTO.class);
@@ -204,8 +219,8 @@ public class ProductServiceImpl implements ProductService {
 			} else {
 				dto.setDiscount("-0%");
 			}
-			dto.setImageUrl(baseUrl + "/softools/api/images/product/" + dto.getImageUrl());
-			dto.setProductLink(baseUrl + "/softools/api/products/itm/" + dto.getProductId());
+			dto.setImageUrl(baseUrl + "/api/images/product/" + dto.getImageUrl());
+			dto.setProductLink(baseUrl + "/api/products/itm/" + dto.getProductId());
 			return dto;
 		}).collect(Collectors.toList());
 	}
