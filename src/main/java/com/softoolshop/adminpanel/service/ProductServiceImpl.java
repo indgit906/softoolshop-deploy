@@ -66,6 +66,9 @@ public class ProductServiceImpl implements ProductService {
 			}
 			dto.setImageUrl(baseUrl + "/api/images/product/" + dto.getImageUrl());
 			dto.setProductLink(baseUrl + "/api/products/itm/" + dto.getProductId());
+			dto.setPriceStr(this.getCurrSymbol() + dto.getPriceStr());
+			dto.setOldPriceStr(this.getCurrSymbol() + dto.getOldPriceStr());
+
 		}
 
 		return entities;
@@ -99,44 +102,8 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	public Product addProduct(ProductDTO product) {
-		product.setPriceStr("\u20B9" + product.getPriceStr());
-		product.setOldPriceStr("\u20B9" + product.getOldPriceStr());
 		Product entity = modelMapper.map(product, Product.class);
 		return prodRepo.save(entity);
-	}
-
-	private String storeProdImage(MultipartFile imageFile, Integer prdId) {
-
-		if (imageFile == null || imageFile.isEmpty()) {
-			throw new IllegalArgumentException("Image file is empty or null");
-		}
-		try {
-			// Define the folder path
-			String uploadDir = "C:\\upload\\images\\products";
-
-			// Ensure directory exists
-			File dir = new File(uploadDir);
-			if (!dir.exists()) {
-				dir.mkdirs(); // create directories if not exist
-			}
-			// Create a unique filename to avoid overwriting
-			String originalFilename = imageFile.getOriginalFilename();
-			String extension = "";
-			if (originalFilename != null && originalFilename.contains(".")) {
-				extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-			}
-			// Specify format as "yyyyMMdd"
-			SimpleDateFormat dmyFormat = new SimpleDateFormat("yyyyMMdd");
-			// Use format method on SimpleDateFormat
-			String formattedDateStr = dmyFormat.format(new Date());
-			String uniqueFilename = "IMG-" + formattedDateStr + "-" + prdId + extension;
-			Path filePath = Paths.get(uploadDir, uniqueFilename);
-			// Save file
-			Files.copy(imageFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-			return uniqueFilename; // or return uniqueFilename;
-		} catch (IOException e) {
-			throw new RuntimeException("Failed to store image file", e);
-		}
 	}
 
 	@Override
@@ -161,6 +128,13 @@ public class ProductServiceImpl implements ProductService {
 		}
 		prodDto.setProductLink(baseUrl + "/api/products/itm/" + prodDto.getProductId());
 		prodDto.setImageUrl(baseUrl + "/api/images/product/" + prodDto.getImageUrl());
+
+		double dscntAmt = Double.parseDouble(prodDto.getOldPriceStr()) - Double.parseDouble(prodDto.getPriceStr());
+		double dscntPer = dscntAmt/Double.parseDouble(prodDto.getOldPriceStr())*100.00;
+		prodDto.setDiscount(String.valueOf(dscntPer));
+		prodDto.setPriceStr(this.getCurrSymbol() + prodDto.getPriceStr());
+		prodDto.setOldPriceStr(this.getCurrSymbol() + prodDto.getOldPriceStr());
+
 		// prodDto.setDescription(prodDescRepo.getProductDescById(prodDto.getProductId()));
 		return prodDto;
 	}
@@ -221,6 +195,9 @@ public class ProductServiceImpl implements ProductService {
 			}
 			dto.setImageUrl(baseUrl + "/api/images/product/" + dto.getImageUrl());
 			dto.setProductLink(baseUrl + "/api/products/itm/" + dto.getProductId());
+
+			dto.setPriceStr(this.getCurrSymbol() + dto.getPriceStr());
+			dto.setOldPriceStr(this.getCurrSymbol() + dto.getOldPriceStr());
 			return dto;
 		}).collect(Collectors.toList());
 	}
@@ -234,8 +211,8 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public Product updateProd(ProductDTO product) {
 
-		product.setPriceStr(this.formatPriceWithRupee(String.valueOf(product.getNumericPrice())));
-		product.setOldPriceStr(this.formatPriceWithRupee(product.getOldPriceStr()));
+		// product.setPriceStr(this.formatPriceWithRupee(String.valueOf(product.getNumericPrice())));
+		// product.setOldPriceStr(this.formatPriceWithRupee(product.getOldPriceStr()));
 
 		Optional<Product> opt = prodRepo.findById(product.getProductId());
 		if (opt.isPresent()) {
@@ -259,16 +236,24 @@ public class ProductServiceImpl implements ProductService {
 
 	}
 
-	private String formatPriceWithRupee(String priceStr) {
-		String rupee = "\u20B9";
-		if (priceStr == null || priceStr.isBlank()) {
-			return rupee + "0"; // default fallback
-		}
-		return priceStr.startsWith(rupee) ? priceStr : rupee + priceStr;
-	}
+//	private String formatPriceWithRupee(String priceStr) {
+//		String rupee = this.getCurrSymbol();
+//		if (priceStr == null || priceStr.isBlank()) {
+//			return rupee + "0"; // default fallback
+//		}
+//		return priceStr.startsWith(rupee) ? priceStr : rupee + priceStr;
+//	}
 
 	private String extractFileName(String imageUrl) {
 		return imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+	}
+
+	private String getCurrSymbol() {
+		java.util.Currency curr_ency = java.util.Currency.getInstance("INR");
+		// Getting the symbol of the currency
+		String currSymbol = curr_ency.getSymbol();
+		// System.out.println("Symbol for the currency of India is: " + currSymbol);
+		return currSymbol;
 	}
 
 }
