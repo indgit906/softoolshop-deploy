@@ -2,48 +2,42 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "softoolshop"
+        DOCKERHUB_USER = 'inddocker786'
+        IMAGE_NAME = "${DOCKERHUB_USER}/softoolshop"
     }
 
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Build JAR') {
+        stage('Maven Build') {
+            steps {
+                sh 'mvn -B clean package -DskipTests'
+            }
+        }
+
+        stage('Build Docker Image') {
             steps {
                 script {
-                    docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v $HOME/.m2:/root/.m2') {
-                        sh 'mvn clean package -DskipTests'
-                        sh 'mv target/*.jar target/backend.jar'
-                    }
+                    def tag = "${env.BUILD_NUMBER}"
+                    sh "docker build -t ${IMAGE_NAME}:${tag} -t ${IMAGE_NAME}:latest ."
                 }
             }
         }
 
-        stage('Build & Push Docker Image') {
+        stage('Push to DockerHub') {
             steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-password',
-                                                     usernameVariable: 'DOCKER_HUB_USER',
-                                                     passwordVariable: 'DOCKER_HUB_PASS')]) {
-                        sh '''
-                            echo "${DOCKER_HUB_PASS}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
-                            docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest .
-                            docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest
-                        '''
-                    }
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
+                                                  usernameVariable: 'DOCKER_USER',
+                                                  passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh "docker push ${IMAGE_NAME}:${BUILD_NUMBER}"
+                    sh "docker push ${IMAGE_NAME}:latest"
                 }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                sh 'kubectl apply -f deployment.yaml'
             }
         }
     }
 }
-
