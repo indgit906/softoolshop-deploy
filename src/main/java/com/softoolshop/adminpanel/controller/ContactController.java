@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.softoolshop.adminpanel.dto.ContactFormDTO;
 import com.softoolshop.adminpanel.service.ContactFormService;
-import com.softoolshop.adminpanel.service.EmailService;
 
 @RestController
 @RequestMapping("/api/contact")
@@ -24,9 +22,7 @@ public class ContactController {
 	
 	@Autowired
 	private ContactFormService cntctFormService;
-	@Autowired
-	private EmailService emailService;
-
+	
 	@PostMapping
     public ResponseEntity<ContactFormDTO> receiveMessage(@RequestBody ContactFormDTO contactForm) {
         
@@ -40,10 +36,9 @@ public class ContactController {
 	    return ResponseEntity.ok(response);
 	}
 	
-	@PutMapping("/{enqId}")
-    public ResponseEntity<?> replyToMessage(
-            @PathVariable Long enqId,
-            @RequestBody ContactFormDTO replyRequest) {
+	@PutMapping
+    public ResponseEntity<?> replyToMessage(@RequestBody ContactFormDTO replyRequest) {
+		Long enqId = replyRequest.getEnqId();
 		Map<String, Object> response = cntctFormService.replyToMessage(enqId, replyRequest);
 		return ResponseEntity.ok(response);
 	}

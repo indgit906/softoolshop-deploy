@@ -15,16 +15,18 @@ public class AdminpanelApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(AdminpanelApplication.class, args);
 	}
-	
+
 	@Bean
 	public ModelMapper getModelMapper() {
 		ModelMapper modelMapper = new ModelMapper();
-		
+
 		return modelMapper;
 	}
-	
+
 	@Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
+	public RestTemplate restTemplate() {
+		return new RestTemplate();
+	}
+
+	
 }
