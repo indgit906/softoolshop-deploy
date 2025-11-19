@@ -18,7 +18,7 @@ public class EmailService {
 	@Autowired
 	private JavaMailSender mailSender;
 
-	private void sendSimpleEmail(String toEmail, String subject, String body) {
+	public void sendSimpleEmail(String toEmail, String subject, String body) {
 		SimpleMailMessage message = new SimpleMailMessage();
 		message.setFrom("admin@softoolshop.in"); // Must match spring.mail.username
 		message.setTo(toEmail);

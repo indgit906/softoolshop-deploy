@@ -1,14 +1,16 @@
 package com.softoolshop.adminpanel.dto;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @lombok.Data
 public class ContactFormDTO {
 
+	private Long enqId;
 	private String name;
     private String email;
     private String subject;
     private String message;
-    private Date crtDate;
+    private LocalDateTime crtDate;
     private short replyFlg; 
+    private String replyMessage;
 }

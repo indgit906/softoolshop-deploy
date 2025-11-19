@@ -47,9 +47,12 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public List<ProductDTO> getAllProducts() {
 		List<ProductDTO> entities = prodRepo.getActiveProducts(0);
-		String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().scheme("https").replacePath(null).build()
-				.toUriString();
-
+		// Base URL dynamically detects http/https correctly
+	    String baseUrl = ServletUriComponentsBuilder
+	            .fromCurrentContextPath()
+	            .build()
+	            .toUriString();
+	    System.out.println(baseUrl);
 		for (ProductDTO dto : entities) {
 			// Strip ₹ and parse prices
 			double oldPrice = parsePrice(dto.getOldPriceStr());
@@ -61,8 +64,11 @@ public class ProductServiceImpl implements ProductService {
 			} else {
 				dto.setDiscount("-0%");
 			}
-			dto.setImageUrl(baseUrl + "/softools/api/images/product/" + dto.getImageUrl());
-			dto.setProductLink(baseUrl + "/softools/api/products/itm/" + dto.getProductId());
+			dto.setImageUrl(baseUrl + "/api/images/product/" + dto.getImageUrl());
+			dto.setProductLink(baseUrl + "/api/products/itm/" + dto.getProductId());
+			dto.setPriceStr(this.getCurrSymbol() + dto.getPriceStr());
+			dto.setOldPriceStr(this.getCurrSymbol() + dto.getOldPriceStr());
+
 		}
 
 		return entities;
@@ -96,57 +102,39 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	public Product addProduct(ProductDTO product) {
-		product.setPriceStr("\u20B9" + product.getPriceStr());
-		product.setOldPriceStr("\u20B9" + product.getOldPriceStr());
 		Product entity = modelMapper.map(product, Product.class);
 		return prodRepo.save(entity);
 	}
 
-	private String storeProdImage(MultipartFile imageFile, Integer prdId) {
-
-		if (imageFile == null || imageFile.isEmpty()) {
-			throw new IllegalArgumentException("Image file is empty or null");
-		}
-		try {
-			// Define the folder path
-			String uploadDir = "C:\\upload\\images\\products";
-
-			// Ensure directory exists
-			File dir = new File(uploadDir);
-			if (!dir.exists()) {
-				dir.mkdirs(); // create directories if not exist
-			}
-			// Create a unique filename to avoid overwriting
-			String originalFilename = imageFile.getOriginalFilename();
-			String extension = "";
-			if (originalFilename != null && originalFilename.contains(".")) {
-				extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-			}
-			// Specify format as "yyyyMMdd"
-			SimpleDateFormat dmyFormat = new SimpleDateFormat("yyyyMMdd");
-			// Use format method on SimpleDateFormat
-			String formattedDateStr = dmyFormat.format(new Date());
-			String uniqueFilename = "IMG-" + formattedDateStr + "-" + prdId + extension;
-			Path filePath = Paths.get(uploadDir, uniqueFilename);
-			// Save file
-			Files.copy(imageFile.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-			return uniqueFilename; // or return uniqueFilename;
-		} catch (IOException e) {
-			throw new RuntimeException("Failed to store image file", e);
-		}
-	}
-
 	@Override
 	public ProductDTO getProductById(Integer productId) {
-		String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().scheme("https").replacePath(null).build()
-				.toUriString();
+		String baseUrl = ServletUriComponentsBuilder
+	            .fromCurrentContextPath()
+	            .build()
+	            .toUriString();
 		Optional<Product> opt = prodRepo.findById(productId);
 		ProductDTO prodDto = null;
 		if (opt.isPresent()) {
 			prodDto = modelMapper.map(opt.get(), ProductDTO.class);
 		}
-		prodDto.setProductLink(baseUrl + "/softools/api/products/itm/" + prodDto.getProductId());
-		prodDto.setImageUrl(baseUrl + "/softools/api/images/product/" + prodDto.getImageUrl());
+		double oldPrice = parsePrice(prodDto.getOldPriceStr());
+		double newPrice = parsePrice(prodDto.getPriceStr());
+		// Calculate discount percentage
+		if (oldPrice > 0) {
+			double discountPercent = ((oldPrice - newPrice) / oldPrice) * 100;
+			prodDto.setDiscount(String.format("-%.0f%%", discountPercent));
+		} else {
+			prodDto.setDiscount("-0%");
+		}
+		prodDto.setProductLink(baseUrl + "/api/products/itm/" + prodDto.getProductId());
+		prodDto.setImageUrl(baseUrl + "/api/images/product/" + prodDto.getImageUrl());
+
+		double dscntAmt = Double.parseDouble(prodDto.getOldPriceStr()) - Double.parseDouble(prodDto.getPriceStr());
+		double dscntPer = dscntAmt/Double.parseDouble(prodDto.getOldPriceStr())*100.00;
+		prodDto.setDiscount(String.valueOf(dscntPer));
+		prodDto.setPriceStr(this.getCurrSymbol() + prodDto.getPriceStr());
+		prodDto.setOldPriceStr(this.getCurrSymbol() + prodDto.getOldPriceStr());
+
 		// prodDto.setDescription(prodDescRepo.getProductDescById(prodDto.getProductId()));
 		return prodDto;
 	}
@@ -186,9 +174,10 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public List<ProductDTO> getFilteredProducts(ProductFilterDTO filterRequest) {
 		List<Product> entities = prodRepo.getFilteredProducts(filterRequest);
-
-		String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().scheme("https").replacePath(null).build()
-				.toUriString();
+		String baseUrl = ServletUriComponentsBuilder
+	            .fromCurrentContextPath()
+	            .build()
+	            .toUriString();
 
 		return entities.stream().map(entity -> {
 			ProductDTO dto = modelMapper.map(entity, ProductDTO.class);
@@ -204,8 +193,11 @@ public class ProductServiceImpl implements ProductService {
 			} else {
 				dto.setDiscount("-0%");
 			}
-			dto.setImageUrl(baseUrl + "/softools/api/images/product/" + dto.getImageUrl());
-			dto.setProductLink(baseUrl + "/softools/api/products/itm/" + dto.getProductId());
+			dto.setImageUrl(baseUrl + "/api/images/product/" + dto.getImageUrl());
+			dto.setProductLink(baseUrl + "/api/products/itm/" + dto.getProductId());
+
+			dto.setPriceStr(this.getCurrSymbol() + dto.getPriceStr());
+			dto.setOldPriceStr(this.getCurrSymbol() + dto.getOldPriceStr());
 			return dto;
 		}).collect(Collectors.toList());
 	}
@@ -219,8 +211,8 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	public Product updateProd(ProductDTO product) {
 
-		product.setPriceStr(this.formatPriceWithRupee(String.valueOf(product.getNumericPrice())));
-		product.setOldPriceStr(this.formatPriceWithRupee(product.getOldPriceStr()));
+		// product.setPriceStr(this.formatPriceWithRupee(String.valueOf(product.getNumericPrice())));
+		// product.setOldPriceStr(this.formatPriceWithRupee(product.getOldPriceStr()));
 
 		Optional<Product> opt = prodRepo.findById(product.getProductId());
 		if (opt.isPresent()) {
@@ -244,16 +236,24 @@ public class ProductServiceImpl implements ProductService {
 
 	}
 
-	private String formatPriceWithRupee(String priceStr) {
-		String rupee = "\u20B9";
-		if (priceStr == null || priceStr.isBlank()) {
-			return rupee + "0"; // default fallback
-		}
-		return priceStr.startsWith(rupee) ? priceStr : rupee + priceStr;
-	}
+//	private String formatPriceWithRupee(String priceStr) {
+//		String rupee = this.getCurrSymbol();
+//		if (priceStr == null || priceStr.isBlank()) {
+//			return rupee + "0"; // default fallback
+//		}
+//		return priceStr.startsWith(rupee) ? priceStr : rupee + priceStr;
+//	}
 
 	private String extractFileName(String imageUrl) {
 		return imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+	}
+
+	private String getCurrSymbol() {
+		java.util.Currency curr_ency = java.util.Currency.getInstance("INR");
+		// Getting the symbol of the currency
+		String currSymbol = curr_ency.getSymbol();
+		// System.out.println("Symbol for the currency of India is: " + currSymbol);
+		return currSymbol;
 	}
 
 }
